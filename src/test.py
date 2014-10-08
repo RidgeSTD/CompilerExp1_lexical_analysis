@@ -1,3 +1,2 @@
-d = {'print'}
-
-print('print' in d)
+name = input('aa')
+print('name'+name)

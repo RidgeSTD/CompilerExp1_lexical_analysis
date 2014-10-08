@@ -1,6 +1,7 @@
 #coding:utf-8
 
 import sys
+import os
 
 buf = ""
 mLine = 1
@@ -21,22 +22,22 @@ __keywordSet__ = {'abstract','assert','booleanbreak','byte','case',
 				'public','return','strictfp','short','static','super','switch',
 				'synchronized','this','throw','throws','transient','try','void',
 				'volatile','while'}
-__boardSet__ = {';',',', '(', ')', '.'}
+__boardSet__ = {';',',', '(', ')', '.', '{', '}'}
 result=""
 __TOKENIZE_SUCCESS__ = 0
 __TOKEN_ERROR__ = 1
 
 
-def compilerStop(status):
+def compilerFail(status):
 	global mLine
 	global mRow
-	if(status == 0):
-		# TODO
-		tmp = 1
-	if(status == 1):
-		print(result)
-		print("编译于第 "+str(mRow)+" 行, 第 "+str(mLine)+" 列失败")
-		sys.exit(0)
+	global buf
+	global result
+	global currentState
+
+	result = result + "编译于第 "+str(mRow)+" 行, 第 "+str(mLine)+" 列失败,因为:"+status+'\n'
+	currentState='A'
+	buf = ""
 
 
 def tokenizer(ch):
@@ -120,11 +121,11 @@ def tokenizer(ch):
 				return
 			elif(ch in __boardSet__):
 				buf = ""
-				result = result+'('+ch+', 界符)\n'
+				result = result+'('+ch+' , 界符)\n'
 				currentState='A'
 				return
 			else:
-				compilerStop(__TOKEN_ERROR__)
+				compilerFail('不可识别的字符')
 				return
 
 		##############     状态B         #################
@@ -135,9 +136,9 @@ def tokenizer(ch):
 				return
 			else:#可接受状态
 				if (buf in __keywordSet__):
-					result = result + '('+buf+', 关键字)\n'
+					result = result + '('+buf+' , 关键字)\n'
 				else:
-					result = result + '('+buf+', 标识符)\n'
+					result = result + '('+buf+' , 标识符)\n'
 				buf = ""
 				currentState = 'A'
 				continue
@@ -154,7 +155,7 @@ def tokenizer(ch):
 				currentState = 'P'
 				return
 			else:#可接受状态
-				result = result + '('+ buf + ', 整数常量)\n'
+				result = result + '('+ buf + ' , 整数常量)\n'
 				buf = ""
 				currentState = 'A'
 				continue
@@ -169,19 +170,23 @@ def tokenizer(ch):
 				buf = buf+ch
 				currentState = 'F'
 				return
+			else:
+				compilerFail('空白或无效的字符')
+				return
 
 		##############     状态E        #################
 		elif currentState == 'E':
 			if(ch=='\''):
 				buf = buf+ch
 				currentState = 'H'
-				return
+				continue
 			else:
-				compilerStop(__TOKEN_ERROR__)
+				compilerFail('字符常量长度大于一')
+				return
 
-		##############     状态EE        #################
+		##############     状态H        #################
 		elif currentState == 'H':
-			result = result + '(' + buf+ ',字符常量)\n'
+			result = result + '(' + buf+ ' ,字符常量)\n'
 			buf = ""
 			currentState = 'A'
 			return
@@ -193,7 +198,8 @@ def tokenizer(ch):
 				currentState = 'E'
 				return
 			else:
-				compilerStop(__TOKEN_ERROR__)			
+				compilerFail('无效的转义字符')		
+				return	
 
 		##############     状态G         #################
 		elif currentState == 'G':
@@ -216,11 +222,12 @@ def tokenizer(ch):
 				currentState = 'G'
 				return
 			else:
-				compilerStop(__TOKEN_ERROR__)
+				compilerFail('无效的转义字符')	
+				return
 
 		##############     状态J         #################
 		elif currentState == 'J':
-			result = result + '(' + buf+ ',字符串常量)\n'
+			result = result + '(' + buf+ ' ,字符串常量)\n'
 			buf = ""
 			currentState = 'A'
 			return
@@ -240,7 +247,7 @@ def tokenizer(ch):
 				currentState = 'B='
 				return
 			else:
-				result = result+'('+buf+',运算符)\n'
+				result = result+'('+buf+' ,运算符)\n'
 				buf = ""
 				currentState = 'A'
 				continue
@@ -253,7 +260,7 @@ def tokenizer(ch):
 			elif(ch=='*'):
 				currentState = 'M'
 				return
-		##############     状态L         #################
+		##############     状态M         #################
 		elif currentState=='M':
 			if(ch=='/'):
 				currentState = 'N'
@@ -261,10 +268,42 @@ def tokenizer(ch):
 			else:
 				currentState='L'
 
-		##############     状态L         #################
+		##############     状态N         #################
 		elif currentState=='N':
 			currentState = 'A'
 			return
+
+		##############     状态O         #################
+		elif currentState=='O':
+			if(ch=='\n'):
+				currentState = 'A'
+				return
+			else:
+				currentState='O'
+				return
+
+		##############     状态P         #################
+		elif currentState=='P':
+			if(ch in __digitSet__):
+				buf = buf+ch
+				currentState = 'Q'
+				return
+			else:
+				compilerFail('无效的浮点数')
+				return
+
+		##############     状态Q         #################
+		elif currentState=='Q':
+			if(ch in __digitSet__):
+				buf = buf+ch
+				currentState='Q'
+				return
+			else:
+				result = result+'('+buf+' , 浮点数常量)\n'
+				buf=""
+				currentState='A'
+				continue
+
 		##############     状态A+         #################
 		elif currentState=='A+':
 			if(ch=='+' or ch=='='):
@@ -272,14 +311,14 @@ def tokenizer(ch):
 				currentState='B+'
 				return
 			else:
-				result = result+'('+buf+',操作符)\n'
+				result = result+'('+buf+' ,操作符)\n'
 				buf=""
 				currentState = 'A'
 				continue
 
 		##############     状态B+         #################
 		elif currentState=='B+':
-			result = result+'('+buf+',操作符)\n'
+			result = result+'('+buf+' ,操作符)\n'
 			buf = ""
 			currentState = 'A'
 			return
@@ -291,14 +330,14 @@ def tokenizer(ch):
 				currentState='B-'
 				return
 			else:
-				result = result+'('+buf+',操作符)\n'
+				result = result+'('+buf+' ,操作符)\n'
 				buf=""
 				currentState = 'A'
 				continue
 
 		##############     状态B-         #################
 		elif currentState=='B-':
-			result = result+'('+buf+',操作符)\n'
+			result = result+'('+buf+' ,操作符)\n'
 			buf = ""
 			currentState = 'A'
 			return
@@ -310,14 +349,14 @@ def tokenizer(ch):
 				currentState='B*'
 				return
 			else:
-				result = result+'('+buf+',操作符)\n'
+				result = result+'('+buf+' ,操作符)\n'
 				buf=""
 				currentState = 'A'
 				continue
 
 		##############     状态B*         #################
 		elif currentState=='B(':
-			result = result+'('+buf+',操作符)\n'
+			result = result+'('+buf+' ,操作符)\n'
 			buf = ""
 			currentState = 'A'
 			return
@@ -329,14 +368,14 @@ def tokenizer(ch):
 				currentState='B&'
 				return
 			else:
-				result = result+'('+buf+',操作符)\n'
+				result = result+'('+buf+' ,操作符)\n'
 				buf=""
 				currentState = 'A'
 				continue
 
 		##############     状态B+         #################
 		elif currentState=='B&':
-			result = result+'('+buf+',操作符)\n'
+			result = result+'('+buf+' ,操作符)\n'
 			buf = ""
 			currentState = 'A'
 			return
@@ -348,14 +387,14 @@ def tokenizer(ch):
 				currentState='B^'
 				return
 			else:
-				result = result+ '('+buf+',操作符)\n'
+				result = result+ '('+buf+' ,操作符)\n'
 				buf=""
 				currentState = 'A'
 				continue
 
 		##############     状态B^         #################
 		elif currentState=='B^':
-			result = result+'('+buf+',操作符)\n'
+			result = result+'('+buf+' ,操作符)\n'
 			buf = ""
 			currentState = 'A'
 			return
@@ -367,14 +406,14 @@ def tokenizer(ch):
 				currentState='B|'
 				return
 			else:
-				result = result+ '('+buf+',操作符)\n'
+				result = result+ '('+buf+' ,操作符)\n'
 				buf=""
 				currentState = 'A'
 				continue
 
 		##############     状态B|         #################
 		elif currentState=='B|':
-			result = result+'('+buf+',操作符)\n'
+			result = result+'('+buf+' ,操作符)\n'
 			buf = ""
 			currentState = 'A'
 			return
@@ -386,14 +425,14 @@ def tokenizer(ch):
 				currentState='B='
 				return
 			else:
-				result = result+ '('+buf+',操作符)\n'
+				result = result+ '('+buf+' ,操作符)\n'
 				buf=""
 				currentState = 'A'
 				continue
 
 		##############     状态B=         #################
 		elif currentState=='B=':
-			result = result+'('+buf+',操作符)\n'
+			result = result+'('+buf+' ,操作符)\n'
 			buf = ""
 			currentState = 'A'
 			return
@@ -405,14 +444,14 @@ def tokenizer(ch):
 				currentState='B!'
 				return
 			else:
-				result = result+ '('+buf+',操作符)\n'
+				result = result+ '('+buf+' ,操作符)\n'
 				buf=""
 				currentState = 'A'
 				continue
 
 		##############     状态B!         #################
 		elif currentState=='B!':
-			result = result+'('+buf+',操作符)\n'
+			result = result+'('+buf+' ,操作符)\n'
 			buf = ""
 			currentState = 'A'
 			return
@@ -424,14 +463,14 @@ def tokenizer(ch):
 				currentState='B>'
 				return
 			else:
-				result = result+ '('+buf+',操作符)\n'
+				result = result+ '('+buf+' ,操作符)\n'
 				buf=""
 				currentState = 'A'
 				continue
 
 		##############     状态B>         #################
 		elif currentState=='B!':
-			result = result+'('+buf+',操作符)\n'
+			result = result+'('+buf+' ,操作符)\n'
 			buf = ""
 			currentState = 'A'
 			return
@@ -443,14 +482,14 @@ def tokenizer(ch):
 				currentState='B<'
 				return
 			else:
-				result = result+ '('+buf+',操作符)\n'
+				result = result+ '('+buf+' ,操作符)\n'
 				buf=""
 				currentState = 'A'
 				continue
 
 		##############     状态B<         #################
 		elif currentState=='B!':
-			result = result+'('+buf+',操作符)\n'
+			result = result+'('+buf+' ,操作符)\n'
 			buf = ""
 			currentState = 'A'
 			return
@@ -465,12 +504,15 @@ def scanner(text):
 	buf = ""
 	result = ""
 	for i in xrange(0,len(text)):
-		mLine += 1
+		# result=result+'进入scanner\n'
+		mLine = mLine+1
 		tokenizer(text[i])
 		if(text[i]=='\n'):
 			mRow += 1
 			mLine = 0
 
-if __name__ == '__main__':	
-	scanner('System.out.println("fuck!");')
+if __name__ == '__main__':
+	fp = open('code.txt','r')
+	# if()
+	scanner(fp.read())
 	print(result)

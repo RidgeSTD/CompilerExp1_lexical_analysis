@@ -1,0 +1,6 @@
+int a = 2;
+char b = 'k';
+
+public void a(){
+	return;
+}
