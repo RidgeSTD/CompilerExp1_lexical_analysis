@@ -332,7 +332,7 @@ def tokenizer(ch):
 			result.append(buf)
 			buf = ""
 			currentState = 'A'
-			return
+			continue
 
 		##############     状态A-         #################
 		elif currentState=='A-':
@@ -353,7 +353,7 @@ def tokenizer(ch):
 			result.append(buf)
 			buf = ""
 			currentState = 'A'
-			return
+			continue
 
 		##############     状态A*         #################
 		elif currentState=='A*':
@@ -374,7 +374,7 @@ def tokenizer(ch):
 			result.append(buf)
 			buf = ""
 			currentState = 'A'
-			return
+			continue
 
 		##############     状态A&         #################
 		elif currentState=='A&':
@@ -389,13 +389,13 @@ def tokenizer(ch):
 				currentState = 'A'
 				continue
 
-		##############     状态B+         #################
+		##############     状态B&         #################
 		elif currentState=='B&':
 			console_msg = console_msg+'('+buf+' ,操作符)\n'
 			result.append(buf)
 			buf = ""
 			currentState = 'A'
-			return
+			continue
 
 		##############     状态A^         #################
 		elif currentState=='A^':
@@ -416,7 +416,7 @@ def tokenizer(ch):
 			result.append(buf)
 			buf = ""
 			currentState = 'A'
-			return
+			continue
 
 		##############     状态A|         #################
 		elif currentState=='A|':
@@ -437,7 +437,7 @@ def tokenizer(ch):
 			result.append(buf)
 			buf = ""
 			currentState = 'A'
-			return
+			continue
 
 		##############     状态A=         #################
 		elif currentState=='A=':
@@ -458,7 +458,7 @@ def tokenizer(ch):
 			result.append(buf)
 			buf = ""
 			currentState = 'A'
-			return
+			continue
 
 		##############     状态A!         #################
 		elif currentState=='A!':
@@ -479,7 +479,7 @@ def tokenizer(ch):
 			result.append(buf)
 			buf = ""
 			currentState = 'A'
-			return
+			continue
 
 		##############     状态A>         #################
 		elif currentState=='A>':
@@ -500,7 +500,7 @@ def tokenizer(ch):
 			result.append(buf)
 			buf = ""
 			currentState = 'A'
-			return
+			continue
 
 		##############     状态A<         #################
 		elif currentState=='A<':
@@ -521,7 +521,7 @@ def tokenizer(ch):
 			result.append(buf)
 			buf = ""
 			currentState = 'A'
-			return
+			continue
 		
 		##############     状态$         #################
 		elif currentState=='$':
